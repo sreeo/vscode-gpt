@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { Configuration, OpenAIApi } from "openai";
 
+const MODEL = "gpt-3.5-turbo";
+
 async function getOpenAIConfig(): Promise<{
   apiKey: string;
   organizationId: string;
@@ -51,7 +53,7 @@ export async function refactorWithAISuggestion(
     const configuration = new Configuration(openAIConfig);
     const openai = new OpenAIApi(configuration);
     const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: MODEL,
       messages: [{ role: "user", content: prompt }],
     });
     let refactorSuggestion = "";
@@ -80,16 +82,16 @@ export async function generateWithAI(
     const configuration = new Configuration(openAIConfig);
     const openai = new OpenAIApi(configuration);
     const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: MODEL,
       messages: [{ role: "user", content: prompt }],
     });
-    let refactorSuggestion = "";
+    let generatedText = "";
     if (response.data?.choices.length > 0) {
       const suggestions = response.data?.choices;
-      refactorSuggestion = suggestions[0].message?.content || "";
+      generatedText = suggestions[0].message?.content || "";
 
       const edit = new vscode.WorkspaceEdit();
-      edit.replace(document.uri, range, `${prompt}\n${refactorSuggestion}`);
+      edit.replace(document.uri, range, `${prompt}\n${generatedText}`);
       await vscode.workspace.applyEdit(edit);
     }
   } catch (error) {
