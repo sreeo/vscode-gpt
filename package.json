@@ -1,0 +1,73 @@
+{
+  "name": "coderefactor-gpt",
+  "displayName": "coderefactor-gpt",
+  "description": "Refactor code with OpenAI GPT",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.77.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Refactor with AI",
+      "properties": {
+        "refactorWithAI.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your OpenAI API key"
+        },
+        "refactorWithAI.organizationId": {
+          "type": "string",
+          "default": "",
+          "description": "Your OpenAI Organization Id"
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "extension.refactorWithAISuggestion",
+          "group": "z_commands",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "extension.refactorWithAISuggestion",
+        "title": "Refactor with AI suggestion"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "format": "yarn prettier --write ."
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.77.0",
+    "@typescript-eslint/eslint-plugin": "^5.56.0",
+    "@typescript-eslint/parser": "^5.56.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.36.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "prettier": "2.8.7",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "openai": "^3.2.1"
+  }
+}
