@@ -12,6 +12,20 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "keybindings": [
+      {
+        "command": "extension.refactorWithAISuggestion",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.generateWithAI",
+        "key": "ctrl+shift+g",
+        "mac": "cmd+shift+g",
+        "when": "editorTextFocus"
+      }
+    ],
     "configuration": {
       "title": "Refactor with AI",
       "properties": {
@@ -44,7 +58,7 @@
     "commands": [
       {
         "command": "extension.refactorWithAISuggestion",
-        "title": "Refactor with AI suggestion"
+        "title": "Refactor with AI"
       },
       {
         "command": "extension.generateWithAI",
