@@ -1,8 +1,10 @@
-
 import * as vscode from "vscode";
 import { Configuration, OpenAIApi } from "openai";
 
-async function getOpenAIConfig(): Promise<{ apiKey: string; organizationId: string }> {
+async function getOpenAIConfig(): Promise<{
+  apiKey: string;
+  organizationId: string;
+}> {
   const config = vscode.workspace.getConfiguration("refactorWithAI");
   let apiKey = config.get<string>("apiKey");
   let organizationId = config.get<string>("organizationId");
@@ -34,7 +36,6 @@ async function getOpenAIConfig(): Promise<{ apiKey: string; organizationId: stri
   }
   return { apiKey, organizationId };
 }
-
 
 export async function refactorWithAISuggestion(
   document: vscode.TextDocument,
@@ -125,7 +126,10 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  context.subscriptions.push(refactorWithAISuggestionCommand, generateWithAICommand);
+  context.subscriptions.push(
+    refactorWithAISuggestionCommand,
+    generateWithAICommand
+  );
 }
 
 export function deactivate() {}

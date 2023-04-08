@@ -45,7 +45,8 @@
       {
         "command": "extension.refactorWithAISuggestion",
         "title": "Refactor with AI suggestion"
-      },{
+      },
+      {
         "command": "extension.generateWithAI",
         "title": "Generate with AI"
       }
