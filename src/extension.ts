@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
 import { Configuration, OpenAIApi } from "openai";
-import { APIClient, OpenAIConfig } from './interfaces';
+import { APIClient, OpenAIConfig } from "./interfaces";
 
 let MODEL = "gpt-3.5-turbo";
-
 
 async function getOpenAIConfig(): Promise<OpenAIConfig> {
   const config = vscode.workspace.getConfiguration("refactorWithAI");
@@ -30,12 +29,20 @@ async function getOpenAIConfig(): Promise<OpenAIConfig> {
     }
 
     await config.update("apiKey", apiKey, vscode.ConfigurationTarget.Global);
-    await config.update("organizationId", organizationId, vscode.ConfigurationTarget.Global);
+    await config.update(
+      "organizationId",
+      organizationId,
+      vscode.ConfigurationTarget.Global
+    );
   }
   return { apiKey, organizationId };
 }
 
-async function getChatResponse(model: string, prompt: string, client: APIClient) {
+async function getChatResponse(
+  model: string,
+  prompt: string,
+  client: APIClient
+) {
   const response = await client.createChatCompletion({
     model,
     messages: [{ role: "user", content: prompt }],
@@ -43,13 +50,21 @@ async function getChatResponse(model: string, prompt: string, client: APIClient)
   return response;
 }
 
-async function replaceSelectionWithSuggestion(document: vscode.TextDocument, range: vscode.Range, suggestion: string) {
+async function replaceSelectionWithSuggestion(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+  suggestion: string
+) {
   const edit = new vscode.WorkspaceEdit();
   edit.replace(document.uri, range, suggestion);
   await vscode.workspace.applyEdit(edit);
 }
 
-export async function refactorWithAISuggestion(document: vscode.TextDocument, range: vscode.Range, openai: APIClient): Promise<void> {
+export async function refactorWithAISuggestion(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+  openai: APIClient
+): Promise<void> {
   try {
     const selectedText = document.getText(range);
 
@@ -66,7 +81,11 @@ export async function refactorWithAISuggestion(document: vscode.TextDocument, ra
   }
 }
 
-export async function generateWithAI(document: vscode.TextDocument, range: vscode.Range, openai: APIClient): Promise<void> {
+export async function generateWithAI(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+  openai: APIClient
+): Promise<void> {
   try {
     const selectedText = document.getText(range);
     const prompt = `${selectedText}`;
@@ -86,26 +105,35 @@ export async function activate(context: vscode.ExtensionContext) {
   const openAIConfig = await getOpenAIConfig();
   const configuration = new Configuration(openAIConfig);
   const openai = new OpenAIApi(configuration);
-  
-  const refactorWithAISuggestionCommand = vscode.commands.registerCommand("extension.refactorWithAISuggestion", async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
 
-    const selectedRange = editor.selection;
+  const refactorWithAISuggestionCommand = vscode.commands.registerCommand(
+    "extension.refactorWithAISuggestion",
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
 
-    await refactorWithAISuggestion(editor.document, selectedRange, openai);
-  });
+      const selectedRange = editor.selection;
 
-  const generateWithAICommand = vscode.commands.registerCommand("extension.generateWithAI", async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
+      await refactorWithAISuggestion(editor.document, selectedRange, openai);
+    }
+  );
 
-    const selectedRange = editor.selection;
+  const generateWithAICommand = vscode.commands.registerCommand(
+    "extension.generateWithAI",
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
 
-    await generateWithAI(editor.document, selectedRange, openai);
-  });
+      const selectedRange = editor.selection;
 
-  context.subscriptions.push(refactorWithAISuggestionCommand, generateWithAICommand);
+      await generateWithAI(editor.document, selectedRange, openai);
+    }
+  );
+
+  context.subscriptions.push(
+    refactorWithAISuggestionCommand,
+    generateWithAICommand
+  );
 }
 
 export function deactivate() {}
