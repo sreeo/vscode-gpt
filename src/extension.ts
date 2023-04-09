@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { Configuration, OpenAIApi } from "openai";
+import {APIClient} from './interfaces';
 
 const MODEL = "gpt-3.5-turbo";
 
@@ -11,7 +12,7 @@ async function getOpenAIConfig(): Promise<{
   let apiKey = config.get<string>("apiKey");
   let organizationId = config.get<string>("organizationId");
 
-  if (!apiKey || !organizationId) {
+  if (!(apiKey && organizationId)) {
     apiKey = await vscode.window.showInputBox({
       prompt: "Please enter your OpenAI API key:",
       ignoreFocusOut: true,
@@ -39,23 +40,28 @@ async function getOpenAIConfig(): Promise<{
   return { apiKey, organizationId };
 }
 
+async function getChatResponse(model: string, prompt: string, client: APIClient) {
+  const response = await client.createChatCompletion({
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return response;
+}
+
 export async function refactorWithAISuggestion(
   document: vscode.TextDocument,
-  range: vscode.Range
+  range: vscode.Range,
+  openai: APIClient
 ): Promise<void> {
   try {
     const selectedText = document.getText(range);
-    const openAIConfig = await getOpenAIConfig();
+
     const prompt = `Suggest refactoring for following code:\n\n${selectedText}\n\n.
     Assume the output returned is being replaced with the selected code passed in the prompt.
     Also the reasons should be commented out in the code.`;
 
-    const configuration = new Configuration(openAIConfig);
-    const openai = new OpenAIApi(configuration);
-    const response = await openai.createChatCompletion({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const response = await getChatResponse(MODEL, prompt, openai);
+
     let refactorSuggestion = "";
     if (response.data?.choices.length > 0) {
       const suggestions = response.data?.choices;
@@ -72,20 +78,15 @@ export async function refactorWithAISuggestion(
 
 export async function generateWithAI(
   document: vscode.TextDocument,
-  range: vscode.Range
+  range: vscode.Range,
+  openai: APIClient
 ): Promise<void> {
   try {
     const selectedText = document.getText(range);
-    const openAIConfig = await getOpenAIConfig();
     const prompt = `${selectedText}`;
-
-    const configuration = new Configuration(openAIConfig);
-    const openai = new OpenAIApi(configuration);
-    const response = await openai.createChatCompletion({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const response = await getChatResponse(MODEL, prompt, openai);
     let generatedText = "";
+    
     if (response.data?.choices.length > 0) {
       const suggestions = response.data?.choices;
       generatedText = suggestions[0].message?.content || "";
@@ -99,7 +100,11 @@ export async function generateWithAI(
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
+  const openAIConfig = await getOpenAIConfig();
+  const configuration = new Configuration(openAIConfig);
+  const openai = new OpenAIApi(configuration);
+  
   const refactorWithAISuggestionCommand = vscode.commands.registerCommand(
     "extension.refactorWithAISuggestion",
     async () => {
@@ -110,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       const selectedRange = editor.selection;
 
-      await refactorWithAISuggestion(editor.document, selectedRange);
+      await refactorWithAISuggestion(editor.document, selectedRange, openai);
     }
   );
 
@@ -124,7 +129,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       const selectedRange = editor.selection;
 
-      await generateWithAI(editor.document, selectedRange);
+      await generateWithAI(editor.document, selectedRange, openai);
     }
   );
 
