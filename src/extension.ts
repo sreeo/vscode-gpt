@@ -1,42 +1,6 @@
 import * as vscode from "vscode";
 import { Configuration, OpenAIApi } from "openai";
 import { APIClient, OpenAIConfig } from "./interfaces";
-import { ResponseType } from "axios";
-
-
-class Semaphore {
-  private _available: number;
-  private _queue: (() => void)[];
-
-  constructor(concurrency: number) {
-    this._available = concurrency;
-    this._queue = [];
-  }
-
-  async acquire(): Promise<void> {
-    if (this._available > 0) {
-      this._available -= 1;
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((resolve) => {
-      this._queue.push(resolve);
-    });
-  }
-
-  release(): void {
-    if (this._queue.length > 0) {
-      const next = this._queue.shift();
-      if (next) {
-        next();
-      }
-    } else {
-      this._available += 1;
-    }
-  }
-}
-
-const appendSemaphore = new Semaphore(1);
 
 let MODEL = "gpt-3.5-turbo";
 
@@ -100,18 +64,19 @@ async function replaceSelectionWithSuggestion(
   await vscode.workspace.applyEdit(edit);
 }
 
-async function appendTextToEditor(
-  document: vscode.TextDocument,
-  position: vscode.Position,
+function createRangeFromPositionAndText(
+  startPosition: vscode.Position,
   text: string
-): Promise<vscode.Position> {
+): vscode.Range {
+  const lines = text.split("\n");
+  const endLine = startPosition.line + lines.length - 1;
+  const endCharacter =
+    lines.length > 1
+      ? lines[lines.length - 1].length
+      : startPosition.character + lines[0].length;
 
-  const edit = new vscode.WorkspaceEdit();
-  edit.insert(document.uri, position, text);
-  await vscode.workspace.applyEdit(edit);
-
-  return document.positionAt(document.offsetAt(position) + text.length);
-
+  const endPosition = new vscode.Position(endLine, endCharacter);
+  return new vscode.Range(startPosition, endPosition);
 }
 
 export async function refactorWithAISuggestion<T>(
@@ -130,12 +95,16 @@ export async function refactorWithAISuggestion<T>(
     const response = await getChatResponse(MODEL, prompt, openai);
     let currentPosition = range.end;
     let firstResponse = true;
+    let entireResponse = "";
 
     response.data.on("data", async (data: { toString: () => string }) => {
       const lines = data
         .toString()
         .split("\n")
         .filter((line: string) => line.trim() !== "");
+
+      let newText = "";
+
       for (const line of lines) {
         const message = line.replace(/^data: /, "");
         if (message === "[DONE]") {
@@ -144,28 +113,53 @@ export async function refactorWithAISuggestion<T>(
         try {
           const parsed = JSON.parse(message);
 
-          if (parsed.choices[0].delta.content !== undefined) {
-            let newText = parsed.choices[0].delta.content;
+          if (firstResponse) {
+            await appendTextToEditor(document, currentPosition, "\n");
+            currentPosition = new vscode.Position(currentPosition.line + 1, 0);
+            firstResponse = false;
+          }
 
-            // If this is the first response, append a newline before the text
-            if (firstResponse) {
-              await appendTextToEditor(document, currentPosition, "\n");
-              currentPosition = new vscode.Position(
-                currentPosition.line + 1,
-                0
-              );
-              firstResponse = false;
-            }
-            currentPosition = await appendTextToEditor(document, currentPosition, newText);
+          if (parsed.choices[0].delta.content !== undefined) {
+            newText += parsed.choices[0].delta.content;
+            entireResponse += newText;
           }
         } catch (error) {
           console.error("Could not JSON parse stream message", message, error);
         }
       }
+
+      if (newText) {
+        // If this is the first response, append a newline before the text
+        if (firstResponse) {
+          newText = "\n" + newText;
+          firstResponse = false;
+        }
+
+        const replaceRange = createRangeFromPositionAndText(
+          currentPosition,
+          entireResponse
+        );
+        await replaceSelectionWithSuggestion(
+          document,
+          replaceRange,
+          entireResponse
+        );
+      }
     });
   } catch (error) {
     console.log(error);
   }
+}
+
+async function appendTextToEditor(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  text: string
+) {
+  const edit = new vscode.WorkspaceEdit();
+  const range = createRangeFromPositionAndText(position, text);
+  edit.replace(document.uri, range, text);
+  await vscode.workspace.applyEdit(edit);
 }
 
 export async function generateWithAI<T>(
@@ -180,6 +174,7 @@ export async function generateWithAI<T>(
     const response = await getChatResponse(MODEL, prompt, openai);
     let currentPosition = range.end;
     let firstResponse = true;
+    let entireResponse = "";
 
     response.data.on("data", async (data: { toString: () => string }) => {
       const lines = data
@@ -187,33 +182,50 @@ export async function generateWithAI<T>(
         .split("\n")
         .filter((line: string) => line.trim() !== "");
 
-        let newText = '';
+      let newText = "";
 
-        for (const line of lines) {
-          const message = line.replace(/^data: /, '');
-          if (message === '[DONE]') {
-              return; // Stream finished
-          }
-          try {
-              const parsed = JSON.parse(message);
-      
-              if (parsed.choices[0].delta.content !== undefined) {
-                newText += parsed.choices[0].delta.content;
-              }
-          } catch(error) {
-              console.error('Could not JSON parse stream message', message, error);
-          }
+      for (const line of lines) {
+        const message = line.replace(/^data: /, "");
+        if (message === "[DONE]") {
+          return; // Stream finished
         }
-      
-        if (newText) {
-          // If this is the first response, append a newline before the text
+        try {
+          const parsed = JSON.parse(message);
+
           if (firstResponse) {
-            newText = '\n' + newText;
+            await appendTextToEditor(document, currentPosition, "\n");
+            currentPosition = new vscode.Position(currentPosition.line + 1, 0);
             firstResponse = false;
           }
-      
-          currentPosition = await appendTextToEditor(document, currentPosition, newText);
+
+          if (parsed.choices[0].delta.content !== undefined) {
+            newText += parsed.choices[0].delta.content;
+            entireResponse += newText;
+          }
+        } catch (error) {
+          console.error("Could not JSON parse stream message", message, error);
         }
+      }
+
+      if (newText) {
+        // If this is the first response, append a newline before the text
+        if (firstResponse) {
+          newText = "\n" + newText;
+          firstResponse = false;
+        }
+
+        const replaceRange = createRangeFromPositionAndText(
+          currentPosition,
+          entireResponse
+        );
+        await replaceSelectionWithSuggestion(
+          document,
+          replaceRange,
+          entireResponse
+        );
+
+        console.log(entireResponse);
+      }
     });
   } catch (error) {
     console.log(error);
@@ -234,7 +246,9 @@ async function registerCommands(context: vscode.ExtensionContext, openai: any) {
     "extension.refactorWithAISuggestion",
     async () => {
       const editor = await getEditor();
-      if (!editor) return;
+      if (!editor) {
+        return;
+      }
       const selectedRange = editor.selection;
       await refactorWithAISuggestion(editor.document, selectedRange, openai);
     }
@@ -244,13 +258,18 @@ async function registerCommands(context: vscode.ExtensionContext, openai: any) {
     "extension.generateWithAI",
     async () => {
       const editor = await getEditor();
-      if (!editor) return;
+      if (!editor) {
+        return;
+      }
       const selectedRange = editor.selection;
       await generateWithAI(editor.document, selectedRange, openai);
     }
   );
 
-  context.subscriptions.push(refactorWithAISuggestionCommand, generateWithAICommand);
+  context.subscriptions.push(
+    refactorWithAISuggestionCommand,
+    generateWithAICommand
+  );
 }
 
 export async function activate(context: vscode.ExtensionContext) {
