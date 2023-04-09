@@ -1,13 +1,15 @@
-import { AxiosResponse } from "axios";
+import { AxiosResponse, AxiosRequestConfig } from "axios";
 import {
   CreateChatCompletionRequest,
   CreateChatCompletionResponse,
+  CreateCompletionRequest,
 } from "openai";
 
-export interface APIClient {
+export interface APIClient<T> {
   createChatCompletion: (
-    request: CreateChatCompletionRequest
-  ) => Promise<AxiosResponse<CreateChatCompletionResponse>>;
+    request: CreateChatCompletionRequest,
+    options?: AxiosRequestConfig
+  ) => Promise<AxiosResponse<T>>;
 }
 
 export interface OpenAIConfig {
