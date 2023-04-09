@@ -7,17 +7,6 @@
 - Simple and easy-to-use UI with a context menu option and a keyboard shortcut.
 
 
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-
 ## Extension Settings
 
 
@@ -25,6 +14,7 @@ This extension contributes the following settings:
 
 - `refactorWithAI.apiKey`: Set your openAI API key.
 - `refactorWithAI.organizationId`: Set your openAI organization ID.
+- `refactorWithAI.MODEL`: Set the GPT model you want to use. Default gpt-3.5-turbo (gpt-4, gpt-4-0314, gpt-4-32k, gpt-4-32k-0314, gpt-3.5-turbo, gpt-3.5-turbo-0301)
 
 
 ## Release Notes

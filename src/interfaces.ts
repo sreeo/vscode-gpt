@@ -4,3 +4,8 @@ import { CreateChatCompletionRequest, CreateChatCompletionResponse } from 'opena
 export interface APIClient {
     createChatCompletion: (request: CreateChatCompletionRequest) => Promise<AxiosResponse<CreateChatCompletionResponse>>;
 }
+
+export interface OpenAIConfig {
+    apiKey: string;
+    organizationId: string;
+}
