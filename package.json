@@ -4,6 +4,10 @@
   "description": "Refactor code with OpenAI GPT",
   "version": "0.0.1",
   "publisher": "Sreeraj Rajan",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:sreeo/vscode-gpt.git"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.77.0"
